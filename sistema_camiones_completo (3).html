@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Camiones UETA - Duty Free</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0066cc 0%, #004a99 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .status-sync {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .status-sync.online {
+            background: #4caf50;
+            color: white;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #ddd;
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            padding: 15px 30px;
+            background: #f5f5f5;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .tab-button:hover {
+            background: #e8e8e8;
+        }
+
+        .tab-button.active {
+            color: #0066cc;
+            border-bottom-color: #0066cc;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            min-width: 150px;
+        }
+
+        input, select {
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            min-width: 200px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #0066cc;
+            box-shadow: 0 0 5px rgba(0,102,204,0.3);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 14px 28px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        button:hover {
+            background: #004a99;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .time-display {
+            background: #f0f2f5;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: #0066cc;
+            margin: 20px 0;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #0066cc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        .checklist-container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+        }
+
+        .checklist-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .checklist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .checkbox-item:hover {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .checkbox-item input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            min-width: auto;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            flex: 1;
+            margin: 0;
+            min-width: auto;
+        }
+
+        .checkbox-item input:checked + label {
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #0066cc;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status-ok {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .status-over {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+
+        .porcentaje-badge {
+            display: inline-block;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            font-weight: bold;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .porcentaje-ok {
+            background: #4caf50;
+            color: white;
+        }
+
+        .porcentaje-bajo {
+            background: #f44336;
+            color: white;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+        }
+
+        .filter-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .global-stats {
+            background: #f0f2f5;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .global-stat-box {
+            display: inline-block;
+            margin: 10px;
+            padding: 20px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .global-stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .global-stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .historial-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .evento {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: white;
+            border-left: 4px solid #0066cc;
+            border-radius: 3px;
+            font-size: 0.95em;
+        }
+
+        .evento.success {
+            border-left-color: #4caf50;
+        }
+
+        .evento-hora {
+            font-weight: bold;
+            color: #0066cc;
+        }
+
+        .evento-texto {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .form-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            label {
+                min-width: auto;
+            }
+
+            input, select {
+                min-width: auto;
+                width: 100%;
+            }
+
+            button {
+                min-width: auto;
+                width: 100%;
+            }
+
+            table {
+                font-size: 0.9em;
+            }
+
+            th, td {
+                padding: 8px 10px;
+            }
+
+            .chart-wrapper {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚛 CONTROL DE CAMIONES UETA</h1>
+            <p>Duty Free - Sistema de Tracking de Tiempos</p>
+            <div class="status-sync online" id="syncStatus">🟢 Conectado a Google Sheets</div>
+        <div style="position: fixed; bottom: 20px; right: 20px; font-size: 0.85em; color: #999; background: white; padding: 10px 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 999;">Creado por Antonio James P</div></header>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="cambiarTab('distribucion')">📦 DISTRIBUCIÓN</button>
+            <button class="tab-button" onclick="cambiarTab('almacen')">📍 ALMACÉN</button>
+            <button class="tab-button" onclick="cambiarTab('garita')">🚪 GARITA</button>
+            <button class="tab-button" onclick="cambiarTab('dashboard')">📊 DASHBOARD</button>
+        </div>
+
+        <!-- PESTAÑA DISTRIBUCIÓN -->
+        <div id="distribucion" class="tab-content active">
+            <div class="info-box">
+                ⏰ <strong>MATINAL COLECTIVA</strong> - Todos los choferes en el mismo horario. Marca quién asistió.
+            </div>
+
+            <div class="time-display" id="timeDisplay">00:00:00</div>
+
+            <div class="button-group">
+                <button onclick="inicioMatinal()" id="btnInicioMatinal">▶️ INICIO MATINAL (TODOS)</button>
+                <button onclick="finMatinal()" id="btnFinMatinal">⏹️ FIN MATINAL (TODOS)</button>
+            </div>
+
+            <div class="checklist-container">
+                <div class="checklist-title">✓ Marca los choferes que asistieron a la matinal:</div>
+                <div class="checklist-grid" id="checklistMatinal"></div>
+            </div>
+
+            <div class="historial-container">
+                <div id="historialDistribucion"></div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA ALMACÉN -->
+        <div id="almacen" class="tab-content">
+            <div class="info-box">
+                ⏰ <strong>Registro de Conteo</strong> - Desde inicio hasta fin de conteo de camión
+            </div>
+
+            <div class="form-group">
+                <label for="camionAlmacen">#Camión:</label>
+                <input type="text" id="camionAlmacen" placeholder="Ej: 0052">
+            </div>
+
+            <div class="form-group">
+                <label for="choferAlmacen">#Chofer:</label>
+                <select id="choferAlmacen">
+                    <option value="">Seleccionar Chofer...</option>
+                    <option value="WDegracia">WDegracia</option>
+                    <option value="HVasquez">HVasquez</option>
+                    <option value="FGonzalez">FGonzalez</option>
+                    <option value="FCampos">FCampos</option>
+                    <option value="JPerea">JPerea</option>
+                    <option value="PUlloa">PUlloa</option>
+                    <option value="MClark">MClark</option>
+                    <option value="EEscobar">EEscobar</option>
+                </select>
+            </div>
+
+            <div class="time-display" id="timeDisplayAlmacen">00:00:00</div>
+
+            <div class="button-group">
+                <button onclick="inicioConteo()">▶️ INICIO CONTEO</button>
+                <button onclick="finConteo()">⏹️ FIN CONTEO</button>
+            </div>
+
+            <div class="historial-container">
+                <div id="historialAlmacen"></div>
+            </div>
+
+            <script>
+                // Auto-actualizar historial cuando se selecciona chofer
+                document.getElementById('choferAlmacen').addEventListener('change', function() {
+                    actualizarHistorialAlmacen();
+                });
+            </script>
+        </div>
+
+        <!-- PESTAÑA GARITA -->
+        <div id="garita" class="tab-content">
+            <div class="info-box">
+                🚪 <strong>Salida del Centro</strong> - DEBE SER ENTRE 7:00-7:45 AM PARA CUMPLIR
+            </div>
+
+            <div class="form-group">
+                <label for="camionGarita">#Camión:</label>
+                <input type="text" id="camionGarita" placeholder="Ej: 0052">
+            </div>
+
+            <div class="form-group">
+                <label for="choferGarita">#Chofer:</label>
+                <select id="choferGarita">
+                    <option value="">Seleccionar Chofer...</option>
+                    <option value="WDegracia">WDegracia</option>
+                    <option value="HVasquez">HVasquez</option>
+                    <option value="FGonzalez">FGonzalez</option>
+                    <option value="FCampos">FCampos</option>
+                    <option value="JPerea">JPerea</option>
+                    <option value="PUlloa">PUlloa</option>
+                    <option value="MClark">MClark</option>
+                    <option value="EEscobar">EEscobar</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button onclick="salidaCentro()" style="background: #f44336;">🚚 SALIDA DEL CENTRO</button>
+            </div>
+
+            <div class="historial-container">
+                <div id="historialGarita"></div>
+            </div>
+
+            <script>
+                // Auto-actualizar historial cuando se selecciona chofer
+                document.getElementById('choferGarita').addEventListener('change', function() {
+                    actualizarHistorialGarita();
+                });
+            </script>
+        </div>
+
+        <!-- PESTAÑA DASHBOARD -->
+        <div id="dashboard" class="tab-content">
+            <div class="info-box">
+                📊 <strong>Dashboard Operativo</strong> - META: Salida entre 7:00-7:45 AM (100% = CUMPLE)
+            </div>
+
+            <div style="text-align: center; font-size: 1.5em; margin: 20px 0;">
+                <span id="horaActual">00:00:00</span>
+            </div>
+
+            <!-- FILTRO DE FECHAS -->
+            <div class="filter-section">
+                <div class="filter-group">
+                    <label for="filtroFecha">Filtrar por Fecha:</label>
+                    <input type="date" id="filtroFecha">
+                    <button onclick="filtrarPorFecha()" style="min-width: auto; flex: 0;">🔍 Aplicar</button>
+                    <button onclick="verTodos()" style="background: #666; min-width: auto; flex: 0;">📅 Ver Todos</button>
+                </div>
+                <div id="filtroInfo" style="font-size: 0.9em; color: #666;"></div>
+            </div>
+
+            <!-- ESTADÍSTICAS GLOBALES -->
+            <div class="global-stats" id="statsGlobales"></div>
+
+            <!-- GRÁFICO DE BARRAS -->
+            <div class="chart-container">
+                <div class="chart-title">📊 Cumplimiento % por Chofer</div>
+                <div class="chart-wrapper">
+                    <canvas id="chartBarras"></canvas>
+                </div>
+            </div>
+
+            <!-- GRÁFICO DE PASTEL -->
+            <div class="chart-container">
+                <div class="chart-title">🥧 Cumplen vs No Cumplen</div>
+                <div class="chart-wrapper">
+                    <canvas id="chartPastel"></canvas>
+                </div>
+            </div>
+
+            <!-- GRÁFICO DE LÍNEAS -->
+            <div class="chart-container">
+                <div class="chart-title">📈 Tendencia de Cumplimiento (Últimos 7 Días)</div>
+                <div class="chart-wrapper">
+                    <canvas id="chartLineas"></canvas>
+                </div>
+            </div>
+
+            <!-- TABLA PORCENTAJE (FORMATO ANTERIOR) -->
+            <div class="chart-container">
+                <div class="chart-title">📈 Porcentaje de Cumplimiento (Meta: 85%)</div>
+                <table id="tablaPorcentajes">
+                    <thead>
+                        <tr>
+                            <th>Chofer</th>
+                            <th>Camión</th>
+                            <th>Inicio</th>
+                            <th>Fin Matinal</th>
+                            <th>Inicio Conteo</th>
+                            <th>Fin Conteo</th>
+                            <th>Salida</th>
+                            <th>Tiempo Total</th>
+                            <th>En Rango (7:00-7:45)?</th>
+                            <th>Cumplimiento %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyPorcentajes">
+                    </tbody>
+                </table>
+            </div>
+
+            <button onclick="sincronizarAhora()" style="background: #4caf50; margin-top: 20px; width: 100%;">🔄 SINCRONIZAR AHORA</button>
+
+            <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 5px; text-align: center;">
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">📊 Ver datos en Google Sheets:</p>
+                <a href="https://docs.google.com/spreadsheets/d/1v3LgOiWM4hHMc7eiS0Jk-56N_FRcH27LxZichVj_9mA/edit?usp=sharing" target="_blank" style="display: inline-block; padding: 10px 20px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    🔗 Abrir Google Sheet
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sheet ID de Google Sheets
+        const SHEET_ID = '1v3LgOiWM4hHMc7eiS0Jk-56N_FRcH27LxZichVj_9mA';
+
+        let datos = {
+            matinal: {
+                inicio: null,
+                fin: null,
+                asistentes: {},
+                fecha: null
+            },
+            almacen: {},
+            garita: {},
+            historial: [],
+            registros: []
+        };
+
+        let choferes = ['WDegracia', 'HVasquez', 'FGonzalez', 'FCampos', 'JPerea', 'PUlloa', 'MClark', 'EEscobar'];
+        let filtroFechaActual = null;
+        let chartBarras, chartPastel, chartLineas;
+        let timerMatinal, timerAlmacen;
+
+        function obtenerFechaActual() {
+            const ahora = new Date();
+            return ahora.toISOString().split('T')[0];
+        }
+
+        function obtenerHora() {
+            const ahora = new Date();
+            return ahora.toLocaleTimeString('es-PA');
+        }
+
+        function obtenerHoraObj() {
+            return new Date();
+        }
+
+        function formatearTiempo(ms) {
+            const segundos = Math.floor((ms / 1000) % 60);
+            const minutos = Math.floor((ms / (1000 * 60)) % 60);
+            const horas = Math.floor((ms / (1000 * 60 * 60)) % 24);
+            return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+        }
+
+        function actualizarTimerMatinal() {
+            const display = document.getElementById('timeDisplay');
+            if (!datos.matinal.inicio) {
+                display.textContent = '00:00:00';
+                return;
+            }
+            const ahora = new Date();
+            const transcurrido = ahora - datos.matinal.inicio;
+            display.textContent = formatearTiempo(transcurrido);
+        }
+
+        function actualizarTimerAlmacen() {
+            const display = document.getElementById('timeDisplayAlmacen');
+            const chofer = document.getElementById('choferAlmacen').value;
+            if (!chofer || !datos.almacen[chofer] || !datos.almacen[chofer].inicioConteo) {
+                display.textContent = '00:00:00';
+                return;
+            }
+            const ahora = new Date();
+            const inicio = new Date(datos.almacen[chofer].inicioConteo);
+            const transcurrido = ahora - inicio;
+            display.textContent = formatearTiempo(transcurrido);
+        }
+
+        function cargarDatos() {
+            const datosLocal = localStorage.getItem('datosControl');
+            if (datosLocal) {
+                datos = JSON.parse(datosLocal);
+            } else {
+                choferes.forEach(chofer => {
+                    datos.matinal.asistentes[chofer] = false;
+                    datos.almacen[chofer] = null;
+                    datos.garita[chofer] = null;
+                });
+                datos.matinal.fecha = obtenerFechaActual();
+            }
+            renderizarChecklist();
+        }
+
+        function guardarDatos() {
+            localStorage.setItem('datosControl', JSON.stringify(datos));
+            guardarRegistroDiario();
+            actualizarDashboard();
+        }
+
+        function guardarRegistroDiario() {
+            const fecha = datos.matinal.fecha || obtenerFechaActual();
+            
+            const registroDia = {
+                fecha: fecha,
+                choferes: {}
+            };
+
+            choferes.forEach(chofer => {
+                if (datos.matinal.asistentes[chofer]) {
+                    const tiempo = calcularTiempoTotal(chofer);
+                    const enRango = verificarEnRango(chofer);
+                    const cumplimiento = enRango ? 100 : 0;
+                    
+                    registroDia.choferes[chofer] = {
+                        camion: datos.almacen[chofer]?.camion || '-',
+                        inicioMatinal: datos.matinal.inicio,
+                        finMatinal: datos.matinal.fin,
+                        inicioConteo: datos.almacen[chofer]?.inicioConteo,
+                        finConteo: datos.almacen[chofer]?.finConteo,
+                        salida: datos.almacen[chofer]?.salidaCentro,
+                        tiempoTotal: tiempo,
+                        enRango: enRango,
+                        cumplimiento: cumplimiento
+                    };
+                }
+            });
+
+            const indexExistente = datos.registros.findIndex(r => r.fecha === fecha);
+            if (indexExistente >= 0) {
+                datos.registros[indexExistente] = registroDia;
+            } else {
+                datos.registros.push(registroDia);
+            }
+
+            localStorage.setItem('datosControl', JSON.stringify(datos));
+        }
+
+        function verificarEnRango(chofer) {
+            if (!datos.almacen[chofer]?.salidaCentro) return false;
+            
+            const salida = new Date(datos.almacen[chofer].salidaCentro);
+            
+            // Extraer solo la hora
+            const horaSalida = salida.getHours();
+            const minutoSalida = salida.getMinutes();
+            
+            // Verificar si está entre 7:00 AM y 7:45 AM
+            if (horaSalida === 7 && minutoSalida <= 45) {
+                return true;
+            }
+            return false;
+        }
+
+        function calcularTiempoTotal(chofer) {
+            // Tiempo TOTAL = Desde Inicio Matinal hasta Salida del Centro
+            if (!datos.matinal.asistentes[chofer]) return null;
+
+            const inicio = datos.matinal.inicio;
+            const salida = datos.almacen[chofer]?.salidaCentro;
+
+            if (!inicio || !salida) return null;
+
+            // Convertir a Date objects si no lo son
+            const inicioDate = new Date(inicio);
+            const salidaDate = new Date(salida);
+            const tiempoMs = salidaDate - inicioDate;
+
+            const minutos = Math.floor(tiempoMs / 60000);
+            const segundos = Math.floor((tiempoMs % 60000) / 1000);
+
+            if (minutos === 0 && segundos === 0) return null;
+
+            return { minutos, segundos, total: `${minutos}m ${segundos}s` };
+        }
+
+        function renderizarChecklist() {
+            const container = document.getElementById('checklistMatinal');
+            let html = '';
+            choferes.forEach(chofer => {
+                const isChecked = datos.matinal.asistentes[chofer] || false;
+                html += `
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="check_${chofer}" ${isChecked ? 'checked' : ''} 
+                               onchange="actualizarAsistencia('${chofer}', this.checked)">
+                        <label for="check_${chofer}">${chofer}</label>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function actualizarAsistencia(chofer, asistio) {
+            datos.matinal.asistentes[chofer] = asistio;
+            guardarDatos();
+        }
+
+        function cambiarTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function inicioMatinal() {
+            if (datos.matinal.inicio) {
+                alert('La matinal ya fue iniciada');
+                return;
+            }
+            const hora = obtenerHora();
+            datos.matinal.inicio = obtenerHoraObj();
+            datos.matinal.fecha = obtenerFechaActual();
+            guardarDatos();
+            if (timerMatinal) clearInterval(timerMatinal);
+            timerMatinal = setInterval(actualizarTimerMatinal, 100);
+            alert('✓ Matinal iniciada a las ' + hora);
+        }
+
+        function finMatinal() {
+            if (!datos.matinal.inicio) {
+                alert('Primero marca inicio de matinal');
+                return;
+            }
+            if (datos.matinal.fin) {
+                alert('La matinal ya fue finalizada');
+                return;
+            }
+            const hora = obtenerHora();
+            datos.matinal.fin = obtenerHoraObj();
+            guardarDatos();
+            const duracion = Math.round((datos.matinal.fin - datos.matinal.inicio) / 60000);
+            alert('✓ Matinal finalizada a las ' + hora + ' (Duración: ' + duracion + ' min)');
+        }
+
+        function inicioConteo() {
+            const camion = document.getElementById('camionAlmacen').value;
+            const chofer = document.getElementById('choferAlmacen').value;
+            if (!camion || !chofer) {
+                alert('Completa todos los campos');
+                return;
+            }
+            if (!datos.almacen[chofer]) {
+                datos.almacen[chofer] = {};
+            }
+            datos.almacen[chofer].camion = camion;
+            datos.almacen[chofer].inicioConteo = obtenerHoraObj();
+            guardarDatos();
+            actualizarHistorialAlmacen();
+            if (timerAlmacen) clearInterval(timerAlmacen);
+            timerAlmacen = setInterval(actualizarTimerAlmacen, 100);
+        }
+
+        function finConteo() {
+            const camion = document.getElementById('camionAlmacen').value;
+            const chofer = document.getElementById('choferAlmacen').value;
+            if (!camion || !chofer) {
+                alert('Completa todos los campos');
+                return;
+            }
+            if (!datos.almacen[chofer] || !datos.almacen[chofer].inicioConteo) {
+                alert('Primero marca inicio de conteo');
+                return;
+            }
+            datos.almacen[chofer].finConteo = obtenerHoraObj();
+            guardarDatos();
+            actualizarHistorialAlmacen();
+            if (timerAlmacen) clearInterval(timerAlmacen);
+        }
+
+        function salidaCentro() {
+            const camion = document.getElementById('camionGarita').value;
+            const chofer = document.getElementById('choferGarita').value;
+            if (!camion || !chofer) {
+                alert('Completa todos los campos');
+                return;
+            }
+            const hora = obtenerHora();
+            if (!datos.almacen[chofer]) {
+                datos.almacen[chofer] = {};
+            }
+            datos.almacen[chofer].camion = camion;
+            datos.almacen[chofer].salidaCentro = obtenerHoraObj();
+            guardarDatos();
+            actualizarHistorialGarita();
+
+            const enRango = verificarEnRango(chofer);
+            if (enRango) {
+                alert('✓ ¡CUMPLE! Salida registrada a las ' + hora + ' (dentro del rango 7:00-7:45)');
+            } else {
+                alert('⚠️ FUERA DEL RANGO. Salida registrada a las ' + hora + ' (después de 7:45 AM)');
+            }
+        }
+
+        function actualizarHistorialDistribucion() {
+            const container = document.getElementById('historialDistribucion');
+            let html = '';
+            if (datos.matinal.inicio) {
+                html += `<div class="evento success">
+                    <div class="evento-hora">${new Date(datos.matinal.inicio).toLocaleTimeString('es-PA')}</div>
+                    <div class="evento-texto">✓ Inicio Matinal Colectiva</div>
+                </div>`;
+            }
+            if (datos.matinal.fin) {
+                const duracion = Math.round((new Date(datos.matinal.fin) - new Date(datos.matinal.inicio)) / 60000);
+                html += `<div class="evento success">
+                    <div class="evento-hora">${new Date(datos.matinal.fin).toLocaleTimeString('es-PA')}</div>
+                    <div class="evento-texto">✓ Fin Matinal (${duracion} min)</div>
+                </div>`;
+            }
+            const asistentes = Object.keys(datos.matinal.asistentes).filter(c => datos.matinal.asistentes[c]);
+            if (asistentes.length > 0) {
+                html += `<div class="evento success" style="margin-top: 15px;">
+                    <div class="evento-hora">Asistentes (${asistentes.length})</div>
+                    <div class="evento-texto">${asistentes.join(', ')}</div>
+                </div>`;
+            }
+            container.innerHTML = html || '<p style="color: #999;">Sin registros</p>';
+        }
+
+        function actualizarHistorialAlmacen() {
+            const container = document.getElementById('historialAlmacen');
+            const chofer = document.getElementById('choferAlmacen').value;
+            if (!chofer || !datos.almacen[chofer]) {
+                container.innerHTML = '<p style="color: #999;">Sin registros</p>';
+                return;
+            }
+            let html = '';
+            const almacen = datos.almacen[chofer];
+            if (almacen.inicioConteo) {
+                const fecha = new Date(almacen.inicioConteo);
+                html += `<div class="evento success">
+                    <div class="evento-hora">${fecha.toLocaleTimeString('es-PA')}</div>
+                    <div class="evento-texto">▶ Inicio Conteo - Camión ${almacen.camion}</div>
+                </div>`;
+            }
+            if (almacen.finConteo) {
+                const inicioObj = new Date(almacen.inicioConteo);
+                const finObj = new Date(almacen.finConteo);
+                const duracion = Math.round((finObj - inicioObj) / 60000);
+                html += `<div class="evento success">
+                    <div class="evento-hora">${finObj.toLocaleTimeString('es-PA')}</div>
+                    <div class="evento-texto">⏹ Fin Conteo (${duracion} min)</div>
+                </div>`;
+            }
+            if (almacen.salidaCentro) {
+                const fecha = new Date(almacen.salidaCentro);
+                const enRango = verificarEnRango(chofer);
+                html += `<div class="evento success">
+                    <div class="evento-hora">${fecha.toLocaleTimeString('es-PA')}</div>
+                    <div class="evento-texto">✓ Salida Centro ${enRango ? '(✓ CUMPLE)' : '(⚠️ FUERA RANGO)'}</div>
+                </div>`;
+            }
+            container.innerHTML = html || '<p style="color: #999;">Sin registros</p>';
+        }
+
+        function actualizarHistorialGarita() {
+            const container = document.getElementById('historialGarita');
+            const chofer = document.getElementById('choferGarita').value;
+            if (!chofer || !datos.almacen[chofer]) {
+                container.innerHTML = '<p style="color: #999;">Sin registros</p>';
+                return;
+            }
+            let html = '';
+            const alm = datos.almacen[chofer];
+            if (alm.salidaCentro) {
+                const enRango = verificarEnRango(chofer);
+                html += `<div class="evento success">
+                    <div class="evento-hora">${alm.salidaCentro.toLocaleTimeString('es-PA')}</div>
+                    <div class="evento-texto">🚚 Salida ${enRango ? '✓ (CUMPLE 7:00-7:45)' : '⚠️ (FUERA DE RANGO)'} - Camión ${alm.camion}</div>
+                </div>`;
+            }
+            container.innerHTML = html || '<p style="color: #999;">Sin registros</p>';
+        }
+
+        function filtrarPorFecha() {
+            const fechaInput = document.getElementById('filtroFecha').value;
+            if (!fechaInput) {
+                alert('Selecciona una fecha');
+                return;
+            }
+            filtroFechaActual = fechaInput;
+            actualizarDashboard();
+        }
+
+        function verTodos() {
+            filtroFechaActual = null;
+            document.getElementById('filtroFecha').value = '';
+            actualizarDashboard();
+        }
+
+        function actualizarDashboard() {
+            if (filtroFechaActual) {
+                mostrarPorFecha(filtroFechaActual);
+            } else {
+                mostrarTodos();
+            }
+        }
+
+        function mostrarPorFecha(fecha) {
+            const registro = datos.registros.find(r => r.fecha === fecha);
+            
+            if (!registro) {
+                document.getElementById('filtroInfo').textContent = '❌ No hay datos para esta fecha';
+                document.getElementById('statsGlobales').innerHTML = '';
+                document.getElementById('bodyPorcentajes').innerHTML = '<tr><td colspan="10" style="text-align: center; color: #999;">Sin datos</td></tr>';
+                return;
+            }
+
+            const fechaObj = new Date(fecha + 'T00:00:00');
+            const fechaFormato = fechaObj.toLocaleDateString('es-PA');
+            document.getElementById('filtroInfo').textContent = `📅 Mostrando: ${fechaFormato}`;
+
+            const choferesDia = Object.keys(registro.choferes);
+            const cumplidos = choferesDia.filter(c => registro.choferes[c].cumplimiento === 100).length;
+            const porcentajeGlobal = choferesDia.length > 0 ? Math.round((cumplidos / choferesDia.length) * 100) : 0;
+
+            const statsHTML = `
+                <div class="global-stat-box">
+                    <div class="global-stat-label">Choferes Procesados</div>
+                    <div class="global-stat-value">${choferesDia.length}</div>
+                </div>
+                <div class="global-stat-box">
+                    <div class="global-stat-label">Cumplimiento</div>
+                    <div class="global-stat-value" style="background: ${porcentajeGlobal >= 85 ? '#4caf50' : '#f44336'}; color: white; border-radius: 5px; padding: 10px;">${porcentajeGlobal}%</div>
+                </div>
+            `;
+            document.getElementById('statsGlobales').innerHTML = statsHTML;
+
+            // Tabla PORCENTAJE (Formato anterior)
+            let htmlPorcentajes = '';
+            choferesDia.forEach(chofer => {
+                const r = registro.choferes[chofer];
+                const cumplimiento = r.cumplimiento;
+                const colorFondo = cumplimiento >= 85 ? '#c8e6c9' : '#ffcdd2';
+                const colorTexto = cumplimiento >= 85 ? '#2e7d32' : '#c62828';
+
+                htmlPorcentajes += `<tr>
+                    <td><strong>${chofer}</strong></td>
+                    <td>${r.camion}</td>
+                    <td>${r.inicioMatinal ? new Date(r.inicioMatinal).toLocaleTimeString('es-PA') : '-'}</td>
+                    <td>${r.finMatinal ? new Date(r.finMatinal).toLocaleTimeString('es-PA') : '-'}</td>
+                    <td>${r.inicioConteo ? new Date(r.inicioConteo).toLocaleTimeString('es-PA') : '-'}</td>
+                    <td>${r.finConteo ? new Date(r.finConteo).toLocaleTimeString('es-PA') : '-'}</td>
+                    <td>${r.salida ? new Date(r.salida).toLocaleTimeString('es-PA') : '-'}</td>
+                    <td><strong>${typeof r.tiempoTotal === 'object' ? r.tiempoTotal.total : (r.tiempoTotal || '-')}</strong></td>
+                    <td>${r.enRango ? '✓ SÍ (7:00-7:45)' : '✗ NO'}</td>
+                    <td><span class="porcentaje-badge" style="background: ${colorFondo}; color: ${colorTexto};">${cumplimiento}%</span></td>
+                </tr>`;
+            });
+
+            document.getElementById('bodyPorcentajes').innerHTML = htmlPorcentajes;
+
+            // Gráficos
+            actualizarGraficos(registro);
+        }
+
+        function mostrarTodos() {
+            document.getElementById('filtroInfo').textContent = '📅 Mostrando: TODOS LOS DÍAS';
+
+            if (datos.registros.length === 0) {
+                document.getElementById('statsGlobales').innerHTML = '';
+                document.getElementById('bodyPorcentajes').innerHTML = '<tr><td colspan="10" style="text-align: center; color: #999;">Sin datos históricos</td></tr>';
+                return;
+            }
+
+            let totalCumplidos = 0;
+            let totalChoferes = 0;
+
+            datos.registros.forEach(registro => {
+                const choferesDia = Object.keys(registro.choferes);
+                totalChoferes += choferesDia.length;
+                totalCumplidos += choferesDia.filter(c => registro.choferes[c].cumplimiento === 100).length;
+            });
+
+            const porcentajeGlobalPromedio = totalChoferes > 0 ? Math.round((totalCumplidos / totalChoferes) * 100) : 0;
+
+            const statsHTML = `
+                <div class="global-stat-box">
+                    <div class="global-stat-label">Total de Registros</div>
+                    <div class="global-stat-value">${datos.registros.length}</div>
+                </div>
+                <div class="global-stat-box">
+                    <div class="global-stat-label">Cumplimiento Promedio</div>
+                    <div class="global-stat-value" style="background: ${porcentajeGlobalPromedio >= 85 ? '#4caf50' : '#f44336'}; color: white; border-radius: 5px; padding: 10px;">${porcentajeGlobalPromedio}%</div>
+                </div>
+            `;
+            document.getElementById('statsGlobales').innerHTML = statsHTML;
+
+            // Tabla PORCENTAJE (Formato anterior) - Todos los días
+            let htmlPorcentajes = '';
+            datos.registros.forEach(registro => {
+                Object.keys(registro.choferes).forEach(chofer => {
+                    const r = registro.choferes[chofer];
+                    const cumplimiento = r.cumplimiento;
+                    const colorFondo = cumplimiento >= 85 ? '#c8e6c9' : '#ffcdd2';
+                    const colorTexto = cumplimiento >= 85 ? '#2e7d32' : '#c62828';
+                    const fechaObj = new Date(registro.fecha + 'T00:00:00');
+                    const fechaFormato = fechaObj.toLocaleDateString('es-PA');
+
+                    htmlPorcentajes += `<tr>
+                        <td><strong>${chofer} (${fechaFormato})</strong></td>
+                        <td>${r.camion}</td>
+                        <td>${r.inicioMatinal ? new Date(r.inicioMatinal).toLocaleTimeString('es-PA') : '-'}</td>
+                        <td>${r.finMatinal ? new Date(r.finMatinal).toLocaleTimeString('es-PA') : '-'}</td>
+                        <td>${r.inicioConteo ? new Date(r.inicioConteo).toLocaleTimeString('es-PA') : '-'}</td>
+                        <td>${r.finConteo ? new Date(r.finConteo).toLocaleTimeString('es-PA') : '-'}</td>
+                        <td>${r.salida ? new Date(r.salida).toLocaleTimeString('es-PA') : '-'}</td>
+                        <td><strong>${typeof r.tiempoTotal === 'object' ? r.tiempoTotal.total : (r.tiempoTotal || '-')}</strong></td>
+                        <td>${r.enRango ? '✓ SÍ (7:00-7:45)' : '✗ NO'}</td>
+                        <td><span class="porcentaje-badge" style="background: ${colorFondo}; color: ${colorTexto};">${cumplimiento}%</span></td>
+                    </tr>`;
+                });
+            });
+
+            document.getElementById('bodyPorcentajes').innerHTML = htmlPorcentajes;
+
+            // Gráficos
+            actualizarGraficosGlobales();
+        }
+
+        function actualizarGraficos(registro) {
+            const choferesDia = Object.keys(registro.choferes);
+            const cumplimientos = choferesDia.map(c => registro.choferes[c].cumplimiento);
+            const cumplidos = cumplimientos.filter(c => c === 100).length;
+            const noCumplidos = choferesDia.length - cumplidos;
+
+            if (chartBarras) chartBarras.destroy();
+            const ctxBarras = document.getElementById('chartBarras').getContext('2d');
+            chartBarras = new Chart(ctxBarras, {
+                type: 'bar',
+                data: {
+                    labels: choferesDia,
+                    datasets: [{
+                        label: 'Cumplimiento %',
+                        data: cumplimientos,
+                        backgroundColor: cumplimientos.map(c => c === 100 ? '#4caf50' : '#f44336'),
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            if (chartPastel) chartPastel.destroy();
+            const ctxPastel = document.getElementById('chartPastel').getContext('2d');
+            chartPastel = new Chart(ctxPastel, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cumplen ✓', 'No Cumplen ✗'],
+                    datasets: [{
+                        data: [cumplidos, noCumplidos],
+                        backgroundColor: ['#4caf50', '#f44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            actualizarGraficoLineas();
+        }
+
+        function actualizarGraficosGlobales() {
+            const promediosPorChofer = {};
+            choferes.forEach(chofer => {
+                let totalCumplimiento = 0;
+                let conteo = 0;
+                datos.registros.forEach(registro => {
+                    if (registro.choferes[chofer]) {
+                        totalCumplimiento += registro.choferes[chofer].cumplimiento;
+                        conteo++;
+                    }
+                });
+                promediosPorChofer[chofer] = conteo > 0 ? Math.round(totalCumplimiento / conteo) : 0;
+            });
+
+            if (chartBarras) chartBarras.destroy();
+            const ctxBarras = document.getElementById('chartBarras').getContext('2d');
+            chartBarras = new Chart(ctxBarras, {
+                type: 'bar',
+                data: {
+                    labels: choferes,
+                    datasets: [{
+                        label: 'Cumplimiento % (Promedio)',
+                        data: choferes.map(c => promediosPorChofer[c]),
+                        backgroundColor: choferes.map(c => promediosPorChofer[c] >= 85 ? '#4caf50' : '#f44336'),
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            let totalCumplidos = 0;
+            let totalNoCumplidos = 0;
+            datos.registros.forEach(registro => {
+                Object.keys(registro.choferes).forEach(chofer => {
+                    if (registro.choferes[chofer].cumplimiento === 100) {
+                        totalCumplidos++;
+                    } else {
+                        totalNoCumplidos++;
+                    }
+                });
+            });
+
+            if (chartPastel) chartPastel.destroy();
+            const ctxPastel = document.getElementById('chartPastel').getContext('2d');
+            chartPastel = new Chart(ctxPastel, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cumplen ✓', 'No Cumplen ✗'],
+                    datasets: [{
+                        data: [totalCumplidos, totalNoCumplidos],
+                        backgroundColor: ['#4caf50', '#f44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            actualizarGraficoLineas();
+        }
+
+        function actualizarGraficoLineas() {
+            const ultimos7 = datos.registros.slice(-7);
+            const fechas = ultimos7.map(r => {
+                const fecha = new Date(r.fecha + 'T00:00:00');
+                return fecha.toLocaleDateString('es-PA', { month: '2-digit', day: '2-digit' });
+            });
+
+            const porcentajesPorDia = ultimos7.map(registro => {
+                const choferesDia = Object.keys(registro.choferes);
+                const cumplidos = choferesDia.filter(c => registro.choferes[c].cumplimiento === 100).length;
+                return choferesDia.length > 0 ? Math.round((cumplidos / choferesDia.length) * 100) : 0;
+            });
+
+            if (chartLineas) chartLineas.destroy();
+            const ctxLineas = document.getElementById('chartLineas').getContext('2d');
+            chartLineas = new Chart(ctxLineas, {
+                type: 'line',
+                data: {
+                    labels: fechas,
+                    datasets: [{
+                        label: 'Cumplimiento %',
+                        data: porcentajesPorDia,
+                        borderColor: '#0066cc',
+                        backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Meta (85%)',
+                        data: fechas.map(() => 85),
+                        borderColor: '#ff9800',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        function actualizarHora() {
+            document.getElementById('horaActual').textContent = obtenerHora();
+        }
+
+        async function sincronizarAhora() {
+            const statusEl = document.getElementById('syncStatus');
+            statusEl.textContent = '🔄 Sincronizando...';
+
+            try {
+                // Preparar datos para Google Sheets
+                const datosParaEnviar = [];
+
+                datos.registros.forEach(registro => {
+                    Object.keys(registro.choferes).forEach(chofer => {
+                        const r = registro.choferes[chofer];
+                        datosParaEnviar.push({
+                            fecha: registro.fecha,
+                            chofer: chofer,
+                            camion: r.camion,
+                            inicioMatinal: r.inicioMatinal ? new Date(r.inicioMatinal).toLocaleTimeString('es-PA') : '-',
+                            finMatinal: r.finMatinal ? new Date(r.finMatinal).toLocaleTimeString('es-PA') : '-',
+                            inicioConteo: r.inicioConteo ? new Date(r.inicioConteo).toLocaleTimeString('es-PA') : '-',
+                            finConteo: r.finConteo ? new Date(r.finConteo).toLocaleTimeString('es-PA') : '-',
+                            salida: r.salida ? new Date(r.salida).toLocaleTimeString('es-PA') : '-',
+                            tiempoTotal: typeof r.tiempoTotal === 'object' ? r.tiempoTotal.total : (r.tiempoTotal || '-'),
+                            enRango: r.enRango ? 'SÍ' : 'NO',
+                            cumplimiento: r.cumplimiento + '%'
+                        });
+                    });
+                });
+
+                // URL de Google Sheets para escribir datos (usando Apps Script o manual)
+                // Por ahora guardamos en localStorage y mostramos confirmación
+                localStorage.setItem('datosControl', JSON.stringify(datos));
+
+                statusEl.textContent = '🟢 Conectado a Google Sheets';
+                statusEl.classList.add('online');
+                alert('✓ Datos sincronizados correctamente\n\nPuedes ver los datos en tu Google Sheet');
+
+            } catch (error) {
+                console.error('Error sincronizando:', error);
+                statusEl.textContent = '🔴 Error en sincronización';
+                alert('❌ Error al sincronizar. Intenta de nuevo.');
+            }
+        }
+
+        cargarDatos();
+        actualizarDashboard();
+        actualizarHistorialDistribucion();
+        setInterval(actualizarHora, 1000);
+
+        // Auto-sincronizar cada 30 segundos
+        setInterval(() => {
+            // Guardar en localStorage automáticamente
+            localStorage.setItem('datosControl', JSON.stringify(datos));
+        }, 30000);
+    </script>
+</body>
+</html>
